@@ -49,6 +49,8 @@ def score_model():
     # save f1 score
     with open(model_path/"latestscore.txt", 'w') as f:
         f.write(str(f1))
+    
+    return f1
 
 if __name__ == '__main__':
     score_model()
