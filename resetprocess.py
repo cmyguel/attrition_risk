@@ -4,6 +4,7 @@ import shutil
 # remove output folders 
 shutil.rmtree('ingesteddata', ignore_errors=True)
 shutil.rmtree('practicemodels', ignore_errors=True)
+shutil.rmtree('models', ignore_errors=True)
 
 # use first configuration file
 shutil.copy('config1.json', 'config.json')
