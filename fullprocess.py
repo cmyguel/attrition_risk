@@ -11,6 +11,7 @@ import json
 import ast
 import pandas as pd
 from sklearn.metrics import f1_score
+from scoring import compute_f1
 
 
 #############Load config.json and get input and output paths
@@ -24,8 +25,11 @@ prod_deployment_path = Path(config['prod_deployment_path'])
 
 ##################Check and read new data
 #first, read ingestedfiles.txt
-with open(output_folder_path/"ingestedfiles.txt", 'r') as f:
-    prev_ingested_files = ast.literal_eval(f.read())
+if (output_folder_path/"ingestedfiles.txt").exists():
+    with open(output_folder_path/"ingestedfiles.txt", 'r') as f:
+        prev_ingested_files = ast.literal_eval(f.read())
+else:
+    prev_ingested_files = []
 
 #second, determine whether the source data folder has files that aren't listed in ingestedfiles.txt
 print("previously ingested files:", prev_ingested_files)
@@ -35,7 +39,7 @@ new_files = current_files.difference(prev_ingested_files)
 ##################Deciding whether to proceed, part 1
 #if you found new data, you should proceed. otherwise, do end the process here
 if len(new_files)>0:
-    print(f"{new_files} are not one of the previously ingested files {prev_ingested_files}. Running ingestion.py")
+    print(f"the new files {new_files} are not one of the previously ingested files {prev_ingested_files}. Running ingestion.py")
     os.system('python3 ingestion.py')
 else:
     print("there are no new files to ingest. Process finished.")
@@ -46,20 +50,14 @@ else:
 with open(prod_deployment_path/"latestscore.txt", "r") as f:
     prev_f1 = float(f.read())
 
-with open(prod_deployment_path/"trainedmodel.pkl", "rb") as f:
-    pipeline = pickle.load(f)
-
-new_data = pd.read_csv(output_folder_path/"finaldata.csv", low_memory=False)
-y_pred = pipeline.predict(new_data)
-new_f1 = f1_score( new_data['exited'], y_pred, pos_label=1 )
-
+new_f1 = compute_f1(prod_deployment_path/"trainedmodel.pkl", output_folder_path/"finaldata.csv")
 
 ##################Deciding whether to proceed, part 2
 #if you found model drift, you should proceed. otherwise, do end the process here
 if prev_f1 > new_f1:
-    print(f"there is evidence of model drift (prev_f1:{prev_f1:.2f}, new_f1:{new_f1:.2f}). Proceeding to re-deployment.")
+    print(f"there is evidence of model drift (prev_f1:{prev_f1:.3f}, new_f1:{new_f1:.3f}). Proceeding to re-deployment.")
 else:
-    print(f"There are no signs of model drift (prev_f1:{prev_f1:.2f}, new_f1:{new_f1:.2f}). Process finished.")
+    print(f"There are no signs of model drift (prev_f1:{prev_f1:.3f}, new_f1:{new_f1:.3f}). Process finished.")
     exit()
 
 ##################Re-training
